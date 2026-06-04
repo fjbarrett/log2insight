@@ -8,7 +8,14 @@ version = "0.1.0"
 description = "Local, privacy-first 'Screen Time for everything' tracker for macOS."
 readme = "README.md"
 requires-python = ">=3.9"
-dependencies = []  # standard library only
+dependencies = []  # the collection daemon is standard library only
+
+[project.optional-dependencies]
+# GUI menu bar app. Kept out of the core so the daemon stays dependency-free.
+menubar = [
+    "rumps>=0.4",
+    "pyobjc-framework-WebKit>=10",  # pulls in pyobjc Cocoa/AppKit too
+]
 
 [project.scripts]
 log2insight = "log2insight.cli:main"
