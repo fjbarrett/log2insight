@@ -14,6 +14,8 @@ import json
 import rumps
 from AppKit import (
     NSApp,
+    NSApplication,
+    NSApplicationActivationPolicyAccessory,
     NSBackingStoreBuffered,
     NSWindow,
     NSWindowStyleMaskClosable,
@@ -249,7 +251,17 @@ window.l2iSaved = function (res) {
 
 
 def main():
-    L2IApp().run()
+    app = L2IApp()
+    # Run as a menu-bar-only "accessory" app: no Dock icon and no Cmd-Tab entry,
+    # just the status item. The Dashboard/Settings WKWebView windows still open
+    # and focus fine because _show_web() calls activateIgnoringOtherApps_.
+    # Set this before app.run(): rumps only creates the shared NSApplication
+    # inside run(), so we materialize it here (idempotent — run() reuses it) and
+    # flip the policy before the run loop would otherwise show a Dock icon.
+    NSApplication.sharedApplication().setActivationPolicy_(
+        NSApplicationActivationPolicyAccessory
+    )
+    app.run()
 
 
 if __name__ == "__main__":
