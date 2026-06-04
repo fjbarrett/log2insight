@@ -1,0 +1,18 @@
+#!/bin/sh
+# Enforce the repo workflow: never push directly to main.
+# Work happens on feat/fix/chore/... branches and lands via Pull Request.
+# Wired via:  git config core.hooksPath .githooks
+
+protected="main master"
+while read -r _local_ref _local_sha remote_ref _remote_sha; do
+	for branch in $protected; do
+		if [ "$remote_ref" = "refs/heads/$branch" ]; then
+			echo "✗ Direct pushes to '$branch' are blocked (see CLAUDE.md)." >&2
+			echo "  Push a feature branch and open a PR instead:" >&2
+			echo "    git switch -c feat/my-change && git push -u origin feat/my-change" >&2
+			exit 1
+		fi
+	done
+done
+
+exit 0

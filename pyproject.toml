@@ -1,0 +1,17 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "log2insight"
+version = "0.1.0"
+description = "Local, privacy-first 'Screen Time for everything' tracker for macOS."
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = []  # standard library only
+
+[project.scripts]
+log2insight = "log2insight.cli:main"
+
+[tool.setuptools]
+packages = ["log2insight", "log2insight.collectors"]
