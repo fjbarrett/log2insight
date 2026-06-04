@@ -54,6 +54,29 @@ pip install -e .
 log2insight doctor
 ```
 
+## Menu bar app
+
+A native macOS menu bar app gives you live status, one-click control, and a
+dashboard without the terminal. It's a thin **controller** — collection still
+runs in the headless launchd agent above; the menu bar app just views and drives
+it. It needs the `menubar` extra (rumps + PyObjC), kept out of the core so the
+daemon stays dependency-free:
+
+```bash
+pip install -e ".[menubar]"
+log2insight menubar            # run it now (📊 appears in the menu bar)
+log2insight install-menubar    # …or launch it automatically at login
+```
+
+From the menu you can see whether collection is running and the live sample
+count, **Start/Stop** the agent, open a **Dashboard** (top apps, network, Apple
+Screen Time — a native WKWebView window), and edit **Settings** (poll interval
+and collector cadences). Saving settings writes `~/.log2insight/settings.json`
+and restarts the agent so changes take effect.
+
+No menu bar? `log2insight dashboard` renders the same dashboard into your
+default browser.
+
 ## Granting permissions
 
 System Settings → Privacy & Security:
