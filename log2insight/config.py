@@ -44,6 +44,11 @@ def _tunable(env_key, json_key, default, cast):
     return cast(default)
 
 
+# Opt-in daily email report: non-secret config in this file, the SMTP app
+# password in the macOS Keychain (service below).
+EMAIL_CONFIG_PATH = DATA_DIR / "email.json"
+KEYCHAIN_SERVICE = "com.log2insight.smtp"
+
 # Poll cadence (seconds between cycles) and how often each expensive
 # collector runs, expressed in whole cycles.
 INTERVAL = _tunable("LOG2INSIGHT_INTERVAL", "interval", 10, float)
@@ -69,6 +74,10 @@ AGENT_PLIST = HOME / "Library/LaunchAgents" / f"{AGENT_LABEL}.plist"
 # Optional login item for the menu bar app (separate from the collection agent).
 MENUBAR_LABEL = "com.log2insight.menubar"
 MENUBAR_PLIST = HOME / "Library/LaunchAgents" / f"{MENUBAR_LABEL}.plist"
+
+# Separate launchd agent that emails the daily report (3pm on weekdays).
+EMAILER_LABEL = "com.log2insight.emailer"
+EMAILER_PLIST = HOME / "Library/LaunchAgents" / f"{EMAILER_LABEL}.plist"
 
 # Map a frontmost-app name -> (AppleScript app name, tab expression).
 # Only queried when that browser is the frontmost app. Needs Automation
