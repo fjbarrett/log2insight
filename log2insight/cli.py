@@ -1,4 +1,5 @@
-"""Command-line entrypoint: init / run / report / doctor / install / uninstall / status."""
+"""Command-line entrypoint: init / run / report / doctor / install / uninstall /
+status / email-setup / email-report / install-emailer / uninstall-emailer."""
 
 import argparse
 
@@ -36,9 +37,36 @@ def _cmd_uninstall(_args):
     print(msg)
 
 
+def _cmd_email_setup(args):
+    from . import emailreport
+    emailreport.setup(
+        to=args.to, sender=getattr(args, "from"),
+        host=args.host, port=args.port,
+    )
+
+
+def _cmd_email_report(args):
+    from . import emailreport
+    emailreport.run_scheduled(day=args.day, dry_run=args.dry_run)
+
+
+def _cmd_install_emailer(_args):
+    ok, msg = agent.install_emailer()
+    print(msg)
+    if ok:
+        print("Preview anytime with: log2insight email-report --dry-run")
+
+
+def _cmd_uninstall_emailer(_args):
+    _ok, msg = agent.uninstall_emailer()
+    print(msg)
+
+
 def _cmd_status(_args):
     loaded = agent.is_loaded()
     print(f"launchd agent: {'loaded' if loaded else 'not loaded'}")
+    if agent.emailer_is_loaded():
+        print("daily emailer:  loaded (3pm Mon–Fri)")
     conn = db.connect()
     try:
         for table in ("activity", "net_samples", "disk_samples", "app_usage"):
@@ -74,6 +102,27 @@ def build_parser():
     rep.add_argument("--hours", type=float, default=24, help="lookback window (default 24)")
     rep.add_argument("--top", type=int, default=15, help="rows per section (default 15)")
     rep.set_defaults(func=_cmd_report)
+
+    es = sub.add_parser("email-setup", help="configure the daily email report")
+    es.add_argument("--to", help="recipient email address")
+    es.add_argument("--from", dest="from", help="Gmail address to send from")
+    es.add_argument("--host", help="SMTP host (default smtp.gmail.com)")
+    es.add_argument("--port", type=int, help="SMTP port (default 465)")
+    es.set_defaults(func=_cmd_email_setup)
+
+    er = sub.add_parser("email-report",
+                        help="build + send the prior weekday's report")
+    er.add_argument("--day", help="override day as YYYY-MM-DD")
+    er.add_argument("--dry-run", action="store_true",
+                    help="print the email instead of sending it")
+    er.set_defaults(func=_cmd_email_report)
+
+    sub.add_parser("install-emailer",
+                   help="schedule the email report (3pm Mon–Fri)"
+                   ).set_defaults(func=_cmd_install_emailer)
+    sub.add_parser("uninstall-emailer",
+                   help="stop the scheduled email report"
+                   ).set_defaults(func=_cmd_uninstall_emailer)
 
     return p
 

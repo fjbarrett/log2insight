@@ -11,6 +11,11 @@ DATA_DIR = Path(os.environ.get("LOG2INSIGHT_DIR", HOME / ".log2insight"))
 DB_PATH = Path(os.environ.get("LOG2INSIGHT_DB", DATA_DIR / "activity.db"))
 LOG_DIR = DATA_DIR
 
+# Opt-in daily email report: non-secret config in this file, the SMTP app
+# password in the macOS Keychain (service below).
+EMAIL_CONFIG_PATH = DATA_DIR / "email.json"
+KEYCHAIN_SERVICE = "com.log2insight.smtp"
+
 # Poll cadence (seconds between cycles) and how often each expensive
 # collector runs, expressed in whole cycles.
 INTERVAL = float(os.environ.get("LOG2INSIGHT_INTERVAL", "10"))
@@ -30,6 +35,10 @@ SUBPROCESS_TIMEOUT = 15
 # launchd identifiers.
 AGENT_LABEL = "com.log2insight.agent"
 AGENT_PLIST = HOME / "Library/LaunchAgents" / f"{AGENT_LABEL}.plist"
+
+# Separate launchd agent that emails the daily report (3pm on weekdays).
+EMAILER_LABEL = "com.log2insight.emailer"
+EMAILER_PLIST = HOME / "Library/LaunchAgents" / f"{EMAILER_LABEL}.plist"
 
 # Map a frontmost-app name -> (AppleScript app name, tab expression).
 # Only queried when that browser is the frontmost app. Needs Automation
