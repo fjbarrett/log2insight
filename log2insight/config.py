@@ -1,6 +1,10 @@
-"""Runtime configuration. Everything is overridable via environment variables
-so the launchd agent and ad-hoc runs can be tuned without code edits."""
+"""Runtime configuration. Tunables resolve as: environment variable, then the
+user's settings.json (written by the menu bar Settings pane), then a built-in
+default — so the launchd agent, ad-hoc runs, and the GUI all share one source
+of truth. These constants are read once at import; changing settings.json takes
+effect the next time the daemon starts (the menu bar restarts it on save)."""
 
+import json
 import os
 from pathlib import Path
 
@@ -10,6 +14,35 @@ HOME = Path.home()
 DATA_DIR = Path(os.environ.get("LOG2INSIGHT_DIR", HOME / ".log2insight"))
 DB_PATH = Path(os.environ.get("LOG2INSIGHT_DB", DATA_DIR / "activity.db"))
 LOG_DIR = DATA_DIR
+SETTINGS_PATH = DATA_DIR / "settings.json"
+
+
+def _load_settings():
+    try:
+        with open(SETTINGS_PATH) as fh:
+            data = json.load(fh)
+        return data if isinstance(data, dict) else {}
+    except (OSError, ValueError):
+        return {}
+
+
+_SETTINGS = _load_settings()
+
+
+def _tunable(env_key, json_key, default, cast):
+    """env var > settings.json > default, coerced through `cast`."""
+    if env_key in os.environ:
+        try:
+            return cast(os.environ[env_key])
+        except (TypeError, ValueError):
+            pass
+    if json_key in _SETTINGS:
+        try:
+            return cast(_SETTINGS[json_key])
+        except (TypeError, ValueError):
+            pass
+    return cast(default)
+
 
 # Opt-in daily email report: non-secret config in this file, the SMTP app
 # password in the macOS Keychain (service below).
@@ -18,13 +51,15 @@ KEYCHAIN_SERVICE = "com.log2insight.smtp"
 
 # Poll cadence (seconds between cycles) and how often each expensive
 # collector runs, expressed in whole cycles.
-INTERVAL = float(os.environ.get("LOG2INSIGHT_INTERVAL", "10"))
-NET_EVERY = int(os.environ.get("LOG2INSIGHT_NET_EVERY", "1"))
-DISK_EVERY = int(os.environ.get("LOG2INSIGHT_DISK_EVERY", "6"))
-KNOWLEDGE_EVERY = int(os.environ.get("LOG2INSIGHT_KNOWLEDGE_EVERY", "30"))
+INTERVAL = _tunable("LOG2INSIGHT_INTERVAL", "interval", 10, float)
+NET_EVERY = _tunable("LOG2INSIGHT_NET_EVERY", "net_every", 1, int)
+DISK_EVERY = _tunable("LOG2INSIGHT_DISK_EVERY", "disk_every", 6, int)
+KNOWLEDGE_EVERY = _tunable("LOG2INSIGHT_KNOWLEDGE_EVERY", "knowledge_every", 30, int)
 
 # Below this many seconds of HID idle, we count you as "active".
-IDLE_ACTIVE_THRESHOLD = float(os.environ.get("LOG2INSIGHT_IDLE_THRESHOLD", "60"))
+IDLE_ACTIVE_THRESHOLD = _tunable(
+    "LOG2INSIGHT_IDLE_THRESHOLD", "idle_threshold", 60, float
+)
 
 # Apple's Screen Time database (needs Full Disk Access to read).
 KNOWLEDGE_DB = HOME / "Library/Application Support/Knowledge/knowledgeC.db"
@@ -35,6 +70,10 @@ SUBPROCESS_TIMEOUT = 15
 # launchd identifiers.
 AGENT_LABEL = "com.log2insight.agent"
 AGENT_PLIST = HOME / "Library/LaunchAgents" / f"{AGENT_LABEL}.plist"
+
+# Optional login item for the menu bar app (separate from the collection agent).
+MENUBAR_LABEL = "com.log2insight.menubar"
+MENUBAR_PLIST = HOME / "Library/LaunchAgents" / f"{MENUBAR_LABEL}.plist"
 
 # Separate launchd agent that emails the daily report (3pm on weekdays).
 EMAILER_LABEL = "com.log2insight.emailer"
