@@ -37,26 +37,44 @@ _WINDOW_STYLE = (
 
 
 def _template_icon_path():
-    """Render a monochrome bar-chart glyph (the `chart.bar` SF Symbol) to a temp
-    PNG and return its path, for use as a *template* menu bar icon. macOS tints
-    template images to the menu bar's own colour, so the icon is greyscale and
-    adapts to light/dark automatically. Returns None if SF Symbols aren't
-    available, letting the caller fall back to a plain text glyph."""
+    """Render the `chart.bar.fill` SF Symbol to a high-resolution *template* PNG
+    and return its path, for use as the menu bar icon. macOS tints template
+    images to the menu bar's own colour (greyscale, adapting to light/dark).
+
+    Two details keep it sharp:
+      * rumps forces the icon to a 20pt *square*, so we letterbox the symbol
+        (which is wider than tall) into a square canvas rather than let it get
+        squished out of proportion.
+      * we rasterise well above 20pt — a small 1x bitmap looks blurry once
+        macOS scales it up on a Retina display.
+
+    A filled symbol reads more clearly than a thin outline at menu-bar size.
+    Returns None if SF Symbols aren't available, so the caller can fall back to
+    a plain text glyph."""
     try:
         import os
         import tempfile
 
         from AppKit import NSBitmapImageRep, NSImage
-        from Foundation import NSMakeSize
+        from Foundation import NSMakeRect, NSMakeSize
 
-        img = NSImage.imageWithSystemSymbolName_accessibilityDescription_(
-            "chart.bar", "log2insight"
+        sym = NSImage.imageWithSystemSymbolName_accessibilityDescription_(
+            "chart.bar.fill", "log2insight"
         )
-        if img is None:
+        if sym is None:
             return None
-        img.setTemplate_(True)
-        img.setSize_(NSMakeSize(18, 18))
-        rep = NSBitmapImageRep.imageRepWithData_(img.TIFFRepresentation())
+        px = 44  # ≳2x of rumps' 20pt target; lockFocus adds another 2x on Retina
+        nat = sym.size()
+        scale = min(px / nat.width, px / nat.height) if nat.width and nat.height else 1
+        w, h = nat.width * scale, nat.height * scale
+        rect = NSMakeRect((px - w) / 2.0, (px - h) / 2.0, w, h)  # centred, letterboxed
+        canvas = NSImage.alloc().initWithSize_(NSMakeSize(px, px))
+        canvas.lockFocus()
+        sym.drawInRect_fromRect_operation_fraction_(
+            rect, NSMakeRect(0, 0, 0, 0), 2, 1.0  # 2 = NSCompositingOperationSourceOver
+        )
+        canvas.unlockFocus()
+        rep = NSBitmapImageRep.imageRepWithData_(canvas.TIFFRepresentation())
         png = rep.representationUsingType_properties_(4, None)  # 4 = PNG
         path = os.path.join(tempfile.gettempdir(), "log2insight-menubar.png")
         return path if png.writeToFile_atomically_(path, True) else None
