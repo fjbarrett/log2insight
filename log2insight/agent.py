@@ -128,3 +128,61 @@ def menubar_is_loaded():
         ["launchctl", "list"], capture_output=True, text=True, check=False,
     )
     return config.MENUBAR_LABEL in result.stdout
+
+
+# --- Optional: a separate agent that emails the daily report -----------------
+
+def _emailer_plist_dict():
+    return {
+        "Label": config.EMAILER_LABEL,
+        "ProgramArguments": [sys.executable, "-m", "log2insight", "email-report"],
+        # 3pm, Monday–Friday (Weekday: 1=Mon … 5=Fri). One run per matching day.
+        "StartCalendarInterval": [
+            {"Hour": 15, "Minute": 0, "Weekday": wd} for wd in (1, 2, 3, 4, 5)
+        ],
+        "RunAtLoad": False,
+        "ProcessType": "Background",
+        "EnvironmentVariables": {
+            "LOG2INSIGHT_DIR": str(config.DATA_DIR),
+        },
+        "StandardOutPath": str(config.LOG_DIR / "emailer.out.log"),
+        "StandardErrorPath": str(config.LOG_DIR / "emailer.err.log"),
+    }
+
+
+def install_emailer():
+    config.DATA_DIR.mkdir(parents=True, exist_ok=True)
+    config.EMAILER_PLIST.parent.mkdir(parents=True, exist_ok=True)
+    with open(config.EMAILER_PLIST, "wb") as fh:
+        plistlib.dump(_emailer_plist_dict(), fh)
+    subprocess.run(
+        ["launchctl", "unload", str(config.EMAILER_PLIST)],
+        capture_output=True, check=False,
+    )
+    result = subprocess.run(
+        ["launchctl", "load", "-w", str(config.EMAILER_PLIST)],
+        capture_output=True, text=True, check=False,
+    )
+    if result.returncode != 0:
+        return False, result.stderr.strip() or "launchctl load failed"
+    return True, (
+        f"Installed {config.EMAILER_LABEL} — emails the prior weekday's "
+        "report at 3pm, Mon–Fri."
+    )
+
+
+def uninstall_emailer():
+    subprocess.run(
+        ["launchctl", "unload", str(config.EMAILER_PLIST)],
+        capture_output=True, check=False,
+    )
+    if config.EMAILER_PLIST.exists():
+        config.EMAILER_PLIST.unlink()
+    return True, f"Unloaded and removed {config.EMAILER_LABEL}"
+
+
+def emailer_is_loaded():
+    result = subprocess.run(
+        ["launchctl", "list"], capture_output=True, text=True, check=False,
+    )
+    return config.EMAILER_LABEL in result.stdout

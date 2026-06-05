@@ -115,8 +115,46 @@ Everything lands in `~/.log2insight/activity.db`:
 
 It's plain SQLite — point any tool at it (`sqlite3`, Datasette, a notebook).
 
+## Daily email report (opt-in)
+
+A separate launchd agent can email you a narrative of the previous weekday's
+activity — what you worked on (most-focused windows), apps by active time,
+browser domains, a focus/presence summary, network by process, and Apple
+Screen Time totals. It runs at **3pm, Monday–Friday**; each run reports the
+**most recent prior weekday** (so Monday's email covers the previous Friday).
+
+This is the only part of log2insight that sends anything off the machine, and
+only once you configure it. Sending uses your own Gmail account over SMTP, so
+you need a **[Gmail App Password](https://myaccount.google.com/apppasswords)**
+(your normal password won't work, and you'll need 2-Step Verification on). The
+app password is stored in the **macOS Keychain**, never in a plaintext file.
+
+```bash
+# 1. One-time setup (prompts for the app password; nothing is echoed).
+.venv/bin/python -m log2insight email-setup \
+    --to you@example.com --from you@gmail.com
+
+# 2. Preview without sending.
+.venv/bin/python -m log2insight email-report --dry-run
+
+# 3. Schedule it (3pm Mon–Fri).
+.venv/bin/python -m log2insight install-emailer
+
+# Stop it later:
+.venv/bin/python -m log2insight uninstall-emailer
+```
+
+Non-secret settings (recipient, sender, SMTP host/port) live in
+`~/.log2insight/email.json`. `email-report --day YYYY-MM-DD` re-sends any past
+day; `--dry-run` prints to the terminal instead of emailing.
+
 ## Privacy note
 
 This records a detailed history of everything you do, including window titles
 and URLs. The database is unencrypted on disk. Treat it as sensitive; it's
 `.gitignore`d so you don't commit it by accident.
+
+The collector itself makes **no network connections**. The only feature that
+sends data off the machine is the opt-in [daily email report](#daily-email-report-opt-in),
+and it emails a summary only to the address you configure, via your own Gmail
+account.
