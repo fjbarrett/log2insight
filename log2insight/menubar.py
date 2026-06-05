@@ -36,6 +36,34 @@ _WINDOW_STYLE = (
 )
 
 
+def _template_icon_path():
+    """Render a monochrome bar-chart glyph (the `chart.bar` SF Symbol) to a temp
+    PNG and return its path, for use as a *template* menu bar icon. macOS tints
+    template images to the menu bar's own colour, so the icon is greyscale and
+    adapts to light/dark automatically. Returns None if SF Symbols aren't
+    available, letting the caller fall back to a plain text glyph."""
+    try:
+        import os
+        import tempfile
+
+        from AppKit import NSBitmapImageRep, NSImage
+        from Foundation import NSMakeSize
+
+        img = NSImage.imageWithSystemSymbolName_accessibilityDescription_(
+            "chart.bar", "log2insight"
+        )
+        if img is None:
+            return None
+        img.setTemplate_(True)
+        img.setSize_(NSMakeSize(18, 18))
+        rep = NSBitmapImageRep.imageRepWithData_(img.TIFFRepresentation())
+        png = rep.representationUsingType_properties_(4, None)  # 4 = PNG
+        path = os.path.join(tempfile.gettempdir(), "log2insight-menubar.png")
+        return path if png.writeToFile_atomically_(path, True) else None
+    except Exception:
+        return None
+
+
 class _Bridge(NSObject):
     """WKScriptMessageHandler that forwards JS `postMessage` to a Python
     callback. The callback is attached after construction (`bridge.callback =`)."""
@@ -49,7 +77,14 @@ class _Bridge(NSObject):
 
 class L2IApp(rumps.App):
     def __init__(self):
-        super().__init__("log2insight", title="📊", quit_button=None)
+        icon_path = _template_icon_path()
+        super().__init__(
+            "log2insight",
+            title=None if icon_path else "▁▄█",  # greyscale glyph if no SF Symbol
+            icon=icon_path,
+            template=True,
+            quit_button=None,
+        )
         self._windows = {}  # key -> {"window", "webview", "bridge"}
 
         self.status_item = rumps.MenuItem("…")          # disabled status line

@@ -64,7 +64,7 @@ daemon stays dependency-free:
 
 ```bash
 pip install -e ".[menubar]"
-log2insight menubar            # run it now (📊 appears in the menu bar)
+log2insight menubar            # run it now (a greyscale bar-chart icon appears)
 log2insight install-menubar    # …or launch it automatically at login
 ```
 
